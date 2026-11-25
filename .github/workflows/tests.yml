@@ -1,0 +1,101 @@
+name: Playwright tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Run every morning too, to catch problems even when nothing changed here.
+  schedule:
+    - cron: '17 5 * * *'
+  workflow_dispatch:
+
+# Needed to publish the HTML report to GitHub Pages.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    # The database the Conduit app needs.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: conduit
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+
+    env:
+      CI: true
+      BASE_URL: http://localhost:3001
+      DB_HOST: 127.0.0.1
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: conduit
+      # Only a test app, but still read from a repository secret if one is set.
+      JWT_KEY: ${{ secrets.JWT_KEY || 'ci-test-secret' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install test dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Set up the Conduit app
+        run: npm run app:setup
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      # Playwright starts the app itself (see webServer in playwright.config.ts).
+      - name: Run tests
+        run: npx playwright test
+
+      - name: Upload HTML report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
+
+      - name: Upload report for GitHub Pages
+        if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: playwright-report/
+
+  publish-report:
+    needs: test
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publish the report to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

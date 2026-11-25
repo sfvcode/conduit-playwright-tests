@@ -1,0 +1,14 @@
+node_modules/
+.app/
+.env
+
+# Playwright output
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# OS and editor files
+.DS_Store
+.idea/
+.vscode/

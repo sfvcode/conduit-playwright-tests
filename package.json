@@ -1,0 +1,27 @@
+{
+  "name": "conduit-playwright-tests",
+  "version": "1.0.0",
+  "description": "UI and API test automation for the RealWorld Conduit app, built with Playwright and TypeScript.",
+  "private": true,
+  "scripts": {
+    "db:up": "docker compose up -d db",
+    "db:down": "docker compose down",
+    "app:setup": "bash scripts/setup-app.sh",
+    "app:start": "bash scripts/start-app.sh",
+    "test": "playwright test",
+    "test:api": "playwright test --project=api",
+    "test:ui": "playwright test --project=chromium",
+    "test:mobile": "playwright test --project=mobile-chrome",
+    "test:smoke": "playwright test --grep @smoke",
+    "test:headed": "playwright test --project=chromium --headed",
+    "test:debug": "playwright test --project=chromium --debug",
+    "test:watch": "playwright test --ui",
+    "report": "playwright show-report",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.6.0"
+  }
+}
